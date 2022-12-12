@@ -2,9 +2,9 @@
     "manifest_version": 3,
     "default_locale": "en",
 
-    "name": "__MSG_extension_name__",
-    "description": "__MSG_extension_description__",
-    "version": "1.0",
+    "name": "JQRCode",
+    "description": "识别二维码",
+    "version": "1.0.0",
 
     "icons": {
         "128": "images/qr-128.png"
