@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "default_locale": "en",
+
+    "name": "__MSG_extension_name__",
+    "description": "__MSG_extension_description__",
+    "version": "1.0",
+
+    "icons": {
+        "128": "images/qr-128.png"
+    },
+
+    "background": {
+        "service_worker": "background.js"
+    },
+
+    "content_scripts": [{
+        "js": [ "jquery-3.6.1.slim.min.js", "jsQR.js", "content.js" ],
+        "css": ["qr-extension.css"],
+        "matches": [ "https://yjy.yylxjt.com/*", "*://*/*", "file:///*" ]
+    }],
+
+    "action": {
+        "default_popup": "popup.html"
+    },
+
+    "permissions": ["tabs", "contextMenus", "debugger", ""]
+    
+}
