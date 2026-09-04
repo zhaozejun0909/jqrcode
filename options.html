@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JQRCode 设置</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .settings-group {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e1e1e1;
+        }
+
+        .settings-group:last-child {
+            border-bottom: none;
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e1e1e1;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #409eff;
+            box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save {
+            background: #409eff;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #66b1ff;
+        }
+
+        .btn-reset {
+            background: #f5f7fa;
+            color: #555;
+            border: 1px solid #e1e1e1;
+        }
+
+        .btn-reset:hover {
+            background: #ebeef5;
+        }
+
+        .status-message {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-success {
+            background: #f0f9ff;
+            color: #67c23a;
+            border: 1px solid #c6e2ff;
+            display: block;
+        }
+
+        .switch-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            gap: 12px;
+        }
+
+        .switch-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .switch-slider {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            background-color: #ccc;
+            border-radius: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .switch-slider::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 2px;
+            top: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: left 0.2s;
+        }
+
+        .switch-label input[type="checkbox"]:checked + .switch-slider {
+            background-color: #409eff;
+        }
+
+        .switch-label input[type="checkbox"]:checked + .switch-slider::after {
+            left: 22px;
+        }
+
+        .switch-text {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ JQRCode 设置</h1>
+
+        <div class="settings-group">
+            <div class="section-title">localhost 转换配置</div>
+            
+            <div class="setting-item">
+                <label for="localhost-from">源地址 (from)</label>
+                <input 
+                    type="text" 
+                    id="localhost-from" 
+                    placeholder="例如: http://localhost"
+                    value="http://localhost"
+                >
+                <div class="help-text">当识别到此地址时，会自动转换为下面的目标地址</div>
+            </div>
+
+            <div class="setting-item">
+                <label for="localhost-to">目标地址 (to)</label>
+                <input 
+                    type="text" 
+                    id="localhost-to" 
+                    placeholder="例如: http://10.55.2.25"
+                    value="http://10.55.2.25"
+                >
+                <div class="help-text">localhost 将被替换为此地址</div>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="section-title">二维码生成配置</div>
+            
+            <div class="setting-item">
+                <label for="qr-min-width">最小宽度 (px)</label>
+                <input 
+                    type="text" 
+                    id="qr-min-width" 
+                    placeholder="例如: 220"
+                    value="220"
+                >
+                <div class="help-text">二维码和输入框的最小宽度</div>
+            </div>
+
+            <div class="setting-item">
+                <label for="qr-max-width">最大宽度 (px)</label>
+                <input 
+                    type="text" 
+                    id="qr-max-width" 
+                    placeholder="例如: 320"
+                    value="320"
+                >
+                <div class="help-text">二维码和输入框的最大宽度</div>
+            </div>
+
+            <div class="setting-item">
+                <label for="qr-threshold">URL 长度阈值 (字符数)</label>
+                <input 
+                    type="text" 
+                    id="qr-threshold" 
+                    placeholder="例如: 40"
+                    value="40"
+                >
+                <div class="help-text">超过这个字符数时，二维码宽度会自动增大</div>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="section-title">功能开关</div>
+            
+            <div class="setting-item">
+                <label class="switch-label">
+                    <input type="checkbox" id="context-menu-toggle" checked>
+                    <span class="switch-slider"></span>
+                    <span class="switch-text">右键菜单识别二维码</span>
+                </label>
+                <div class="help-text">启用后，右键单击网页中的图片可以识别二维码</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-save" id="save-btn">✓ 保存设置</button>
+            <button class="btn-reset" id="reset-btn">↻ 恢复默认</button>
+        </div>
+
+        <div class="status-message" id="status-message"></div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>

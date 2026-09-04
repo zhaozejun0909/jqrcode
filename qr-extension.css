@@ -1,76 +1,244 @@
+/* 二维码识别结果弹窗背景 */
 .qr-alert-background {
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background: rgba(0, 0, 0, 0.2);
-	z-index: 9999999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 识别结果弹窗 */
 .qr-alert-view {
-	border-radius: 4px;
-    width: 450px;
-    position: fixed;
-    top: 30%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    box-shadow: rgb(0 0 0 / 15%) 2px 2px 5px;	
-    overflow: hidden;
-    max-height: 800px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: slideUp 0.3s ease-in-out;
 }
 
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 弹窗标题 */
 .qr-alert-title {
-	position: relative;
-	margin-top: 10px;
-	width: 100%;
-	height: 44px;
-	line-height: 44px;
-	font-size: 15px;
-	font-weight: bold;
-	text-align: center;
-	color: #666666;
+  padding: 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 1px solid #e1e1e1;
+  text-align: center;
 }
 
+/* 识别结果文本 */
 .qr-alert-text {
-	position: relative;
-	margin: 20px;
-	font-size: 16px;
-	/*font-weight: lighter;*/
-	line-height: 30px;
-	color: #17468c;
-	word-break: break-word;
+  padding: 20px;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #f9f9f9;
+}
+
+/* 按钮容器 */
+.qr-alert-buttons {
+  display: flex;
+  gap: 10px;
+  padding: 15px 20px;
+  justify-content: center;
+}
+
+/* 按钮样式 */
+.qr-alert-button {
+  flex: 1;
+  padding: 12px 20px;
+  height: 44px;
+  line-height: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  text-align: center;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.qr-alert-button:active {
+  transform: scale(0.98);
 }
 
 .qr-alert-button-copy {
-	position: relative;
-	display: inline-block;
-	width: 195px;
-	margin: 20px;
-	height: 44px;
-	line-height: 44px;
-	font-size: 15px;
-	font-weight: bolder;
-	color: white;
-	text-align: center;
-	background: #bfdcea;
-	border-radius: 4px;
+  background: #67c23a;
+}
+
+.qr-alert-button-copy:hover {
+  background: #85ce61;
+  box-shadow: 0 2px 8px rgba(103, 194, 58, 0.3);
 }
 
 .qr-alert-button-open {
-	position: relative;
-	display: inline-block;
-	width: 195px;
-	margin: 20px 20px 20px 0;
-	height: 44px;
-	line-height: 44px;
-	font-size: 15px;
-	font-weight: bolder;
-	color: white;
-	text-align: center;
-	background: #9eafc1;
-	border-radius: 4px;
+  background: #409eff;
 }
+
+.qr-alert-button-open:hover {
+  background: #66b1ff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+/* 加载状态 */
+.qr-loader {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #409eff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.qr-loader p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* 通知提示 */
+.qr-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: white;
+  z-index: 10001;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.qr-notification-info {
+  background: #67c23a;
+}
+
+.qr-notification-error {
+  background: #f56c6c;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  .qr-alert-background {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .qr-alert-view {
+    background: #2d2d2d;
+    color: #e0e0e0;
+  }
+
+  .qr-alert-title {
+    color: #e0e0e0;
+    border-color: #444;
+  }
+
+  .qr-alert-text {
+    color: #b0b0b0;
+    background: #1e1e1e;
+  }
+
+  .qr-alert-button-copy {
+    background: #56b419;
+  }
+
+  .qr-alert-button-copy:hover {
+    background: #76c043;
+  }
+
+  .qr-alert-button-open {
+    background: #0771d4;
+  }
+
+  .qr-alert-button-open:hover {
+    background: #1990ff;
+  }
+
+  .loader-spinner {
+    border-color: #444;
+    border-top-color: #409eff;
+  }
+
+  .qr-loader p {
+    color: #b0b0b0;
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .qr-alert-view {
+    width: 95%;
+    max-width: none;
+  }
+
+  .qr-alert-buttons {
+    flex-direction: column;
+  }
+
+  .qr-alert-button {
+    min-width: 100%;
+  }
+
+  .qr-notification {
+    right: 10px;
+    left: 10px;
+  }
+}
+
 
 

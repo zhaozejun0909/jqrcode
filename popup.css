@@ -3,42 +3,102 @@
 }
 
 body {
-    font-family: system-ui;
+    font-family: system-ui, -apple-system, sans-serif;
     text-align: center;
+    margin: 0;
+    padding: 16px;
+    background: #f5f5f5;
+    min-width: 220px;
+    border-radius: 8px;
 }
 
+/* 二维码容器 */
 .content-view {
     width: 200px;
+    height: 200px;
     background: white;
-    margin: 20px 10px 10px 10px;
-    border-radius: 6px;
-    border: 1px solid #E1E1E1;
+    margin: 0 auto 12px;
+    border-radius: 8px;
+    border: 1px solid #e1e1e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 #qrcode {
-    width: cals("100% - 20px");
-    height: cals("100% - 20px");;
-    margin: 10px;
+    margin: 0;
 }
 
+/* 输入框 */
 .input-text {
-    width: 180px;
+    width: 220px;
     height: 60px;
-    padding: 10px 10px;
+    padding: 10px 12px;
     font-size: 14px;
-    margin: 0 10px 8px 10px;
+    margin: 0 0 0 0;
     vertical-align: top;
     outline: 0;
     box-shadow: none;
-    border-radius: 6px;
-    border: 1px solid #E1E1E1;
+    border-radius: 8px;
+    border: 1px solid #e1e1e1;
     background: #fff;
     color: #222;
-    box-sizing: content-box;
+    box-sizing: border-box;
     word-break: break-all;
-/*    overflow: hidden;*/
+    resize: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
 }
 
+.input-text:focus {
+    border-color: #409eff;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+}
+
+/* 错误提示 */
+.error-message {
+    color: #f56c6c;
+    padding: 8px;
+    font-size: 12px;
+    margin: 8px 0 0 0;
+    border-radius: 4px;
+    background: #fef0f0;
+    display: none;
+}
+
+/* 深色模式 */
 @media (prefers-color-scheme: dark) {
-    /* Dark Mode styles go here. */
+    body {
+        background: #1e1e1e;
+        color: #e0e0e0;
+    }
+    
+    .content-view {
+        background: white;
+        border-color: #444;
+    }
+    
+    .input-text {
+        background: #2d2d2d;
+        color: #e0e0e0;
+        border-color: #444;
+    }
+    
+    .input-text:focus {
+        border-color: #409eff;
+        box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+    body {
+        padding: 12px;
+    }
+    
+    .content-view {
+        width: 220px;
+        height: 220px;
+    }
 }

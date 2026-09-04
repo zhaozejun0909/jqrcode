@@ -3,11 +3,14 @@
     "default_locale": "en",
 
     "name": "JQRCode",
-    "description": "识别二维码",
-    "version": "1.0.0",
+    "description": "二维码生成和识别",
+    "version": "1.2.0",
 
     "icons": {
-        "128": "images/qr-128.png"
+        "16": "images/icon-16.png",
+        "32": "images/icon-32.png",
+        "48": "images/icon-48.png",
+        "128": "images/icon-128.png"
     },
 
     "background": {
@@ -15,15 +18,23 @@
     },
 
     "content_scripts": [{
-        "js": [ "jquery-3.6.1.slim.min.js", "jsQR.js", "content.js" ],
+        "js": [ "config.js", "utils.js", "barcode-decoder.js", "content.js" ],
         "css": ["qr-extension.css"],
         "matches": [ "https://yjy.yylxjt.com/*", "*://*/*", "file:///*" ]
     }],
 
     "action": {
-        "default_popup": "popup.html"
+        "default_popup": "popup.html",
+        "default_title": "生成二维码"
     },
 
-    "permissions": ["tabs", "contextMenus", "debugger", ""]
+    "options_page": "options.html",
+
+    "web_accessible_resources": [{
+        "resources": ["utils-injected.js"],
+        "matches": ["<all_urls>"]
+    }],
+
+    "permissions": ["tabs", "contextMenus", "debugger", "storage"]
     
 }
