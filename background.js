@@ -1,209 +1,192 @@
-/**
- * 后台脚本 - 消息转发、菜单管理
- */
+/** Event-driven menu routing and bounded image-download fallback. */
+importScripts('config.js', 'barcode-decoder.js');
 
-// 默认的功能配置
-const DEFAULT_FEATURES = {
-  contextMenuEnabled: true
-};
+const CONTENT_VERSION = '1.3.0';
+const MAX_IMAGE_BYTES = 16 * 1024 * 1024;
+const jobs = new Map();
+let menuUpdate = Promise.resolve();
 
-// 扩展安装或更新时初始化
-chrome.runtime.onInstalled.addListener(() => {
-  try {
-    // 检查 chrome.storage 是否可用
-    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.sync) {
-      console.warn('chrome.storage 不可用，使用默认配置');
-      createContextMenu();
-      return;
-    }
+function queueMenuUpdate() {
+  menuUpdate = menuUpdate.catch(() => {}).then(updateContextMenu);
+  menuUpdate.catch(error => console.error('JQRCode: 菜单更新失败', error));
+}
 
-    // 加载用户配置
-    chrome.storage.sync.get(['featuresConfig'], (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn('读取配置失败:', chrome.runtime.lastError.message);
-        createContextMenu();
-        return;
-      }
-      
-      const featuresConfig = result.featuresConfig || DEFAULT_FEATURES;
-      if (featuresConfig.contextMenuEnabled) {
-        createContextMenu();
-      }
-    });
-  } catch (error) {
-    console.error('初始化失败:', error);
-    // 初始化失败时仍然创建菜单
-    createContextMenu();
-  }
-});
-
-// 创建右键菜单
-function createContextMenu() {
-  try {
-    // 先删除可能存在的菜单
-    chrome.contextMenus.removeAll(() => {
-      const options = {
-        type: 'normal',
-        contexts: ['image'],
-        id: '1',
-        title: '🔍 识别二维码',
-        visible: true
-      };
-      chrome.contextMenus.create(options, () => {
-        if (chrome.runtime.lastError) {
-          console.warn('右键菜单创建失败:', chrome.runtime.lastError.message);
-        } else {
-          console.log('右键菜单创建成功');
-        }
+async function updateContextMenu() {
+  const { featuresConfig } = await chrome.storage.sync.get('featuresConfig');
+  await chrome.contextMenus.removeAll();
+  if (featuresConfig?.contextMenuEnabled ?? JQRConfig.defaults.features.contextMenuEnabled) {
+    await new Promise((resolve, reject) => {
+      chrome.contextMenus.create({
+        id: '1', title: '识别二维码', contexts: ['image'],
+        documentUrlPatterns: ['http://*/*', 'https://*/*', 'file:///*']
+      }, () => {
+        const error = chrome.runtime.lastError;
+        if (error) reject(new Error(error.message));
+        else resolve();
       });
     });
-  } catch (error) {
-    console.error('创建右键菜单失败:', error);
   }
 }
 
-// 删除右键菜单
-function removeContextMenu() {
-  try {
-    chrome.contextMenus.removeAll(() => {
-      if (chrome.runtime.lastError) {
-        console.warn('删除右键菜单失败:', chrome.runtime.lastError.message);
-      } else {
-        console.log('右键菜单已删除');
-      }
-    });
-  } catch (error) {
-    console.error('删除右键菜单失败:', error);
-  }
-}
-
-// 右键菜单点击处理
-chrome.contextMenus.onClicked.addListener((info) => {
-  try {
-    if (info.menuItemId === '1') {
-      handleQRCodeRecognition(info.srcUrl);
-    }
-  } catch (error) {
-    console.error('处理右键菜单点击失败:', error);
+chrome.runtime.onInstalled.addListener(() => {
+  queueMenuUpdate();
+});
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.featuresConfig) {
+    queueMenuUpdate();
   }
 });
 
-// 处理来自 content.js 和 options.js 的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  try {
-    // 来自 options.js 的菜单控制消息
-    if (request.action === 'updateContextMenu') {
-      if (request.enabled) {
-        createContextMenu();
-      } else {
-        removeContextMenu();
-      }
-      sendResponse({ success: true });
-      return true;
+function permissionOrigins(info, tab) {
+  const origins = new Set();
+  const page = new URL(tab.url || info.pageUrl);
+  for (const value of [info.srcUrl, info.frameUrl]) {
+    if (!value) continue;
+    const url = new URL(value);
+    if (url.protocol === 'file:') {
+      origins.add('file:///*');
+    } else if (['http:', 'https:'].includes(url.protocol) && url.origin !== page.origin) {
+      // Match patterns don't include a port; scope access to this host/scheme.
+      origins.add(`${url.protocol}//${url.hostname}/*`);
     }
-
-    // 来自 content.js 的图片 URL 消息
-    if (request && typeof request === 'string') {
-      downloadAndPush(request);
-      sendResponse({ success: true });
-    } else {
-      sendResponse({ success: false, error: '无效的请求' });
-    }
-  } catch (error) {
-    console.error('处理消息失败:', error);
-    sendResponse({ success: false, error: error.message });
   }
+  return [...origins];
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== '1' || tab?.id == null || !info.srcUrl || jobs.has(tab.id)) return;
+  const job = {
+    id: crypto.randomUUID(), tabId: tab.id, frameId: info.frameId || 0,
+    url: info.srcUrl, downloaded: false, controller: new AbortController()
+  };
+  jobs.set(tab.id, job);
+  try {
+    const origins = permissionOrigins(info, tab);
+    // Start this directly in the menu gesture, before any asynchronous work.
+    // Denial still allows the page-readable/CORS image path to be tried.
+    const permission = origins.length
+      ? chrome.permissions.request({ origins }).catch(() => false)
+      : Promise.resolve(true);
+    runRecognition(job, permission).catch(error => reportFailure(job, error));
+  } catch (error) {
+    jobs.delete(tab.id);
+    reportFailure(job, error);
+  }
+});
+
+async function prepareContent(job) {
+  const [frame] = await chrome.scripting.executeScript({
+    target: { tabId: job.tabId, frameIds: [job.frameId] },
+    func: () => globalThis.__JQRCodeContent?.version
+  });
+  if (!frame?.documentId) throw new Error('无法访问当前页面，请重新加载后重试');
+  job.documentId = frame.documentId;
+  if (frame.result !== CONTENT_VERSION) {
+    const target = { tabId: job.tabId, documentIds: [job.documentId] };
+    await chrome.scripting.insertCSS({ target, files: ['qr-extension.css'] });
+    await chrome.scripting.executeScript({
+      target, files: ['config.js', 'utils.js', 'barcode-decoder.js', 'content.js']
+    });
+  }
+}
+
+async function runRecognition(job, permission) {
+  try {
+    await permission;
+    await prepareContent(job);
+    await chrome.action.setBadgeText({ tabId: job.tabId, text: '' });
+    await chrome.action.setTitle({ tabId: job.tabId, title: '生成二维码' });
+    await Promise.race([
+      chrome.tabs.sendMessage(job.tabId, {
+        type: 'jqrcode:recognize', requestId: job.id, url: job.url
+      }, { documentId: job.documentId }),
+      new Promise((_, reject) => {
+        job.timer = setTimeout(() => {
+          job.controller.abort();
+          reject(new Error('识别超时，请重试'));
+        }, 30_000);
+      })
+    ]);
+  } finally {
+    clearTimeout(job.timer);
+    job.controller.abort();
+    if (jobs.get(job.tabId) === job) jobs.delete(job.tabId);
+  }
+}
+
+async function reportFailure(job, error) {
+  console.error('JQRCode: 识别请求失败', error);
+  // Restricted pages/file access may prevent content injection altogether.
+  await Promise.allSettled([
+    chrome.action.setBadgeText({ tabId: job.tabId, text: '!' }),
+    chrome.action.setTitle({
+      tabId: job.tabId,
+      title: '无法识别：请检查网站权限；本地文件需开启“允许访问文件网址”，然后重试'
+    })
+  ]);
+}
+
+async function downloadAndDecode(job) {
+  if (job.downloaded) throw new Error('图片读取失败，请重试');
+  job.downloaded = true;
+  const url = new URL(job.url);
+  if (!['http:', 'https:', 'file:', 'data:'].includes(url.protocol)) {
+    throw new Error('无法读取这张图片，请另存图片后重试');
+  }
+  const response = await fetch(job.url, {
+    signal: job.controller.signal, credentials: 'include'
+  });
+  if (!response.ok) throw new Error(`图片下载失败（${response.status}）`);
+  if (Number(response.headers.get('content-length')) > MAX_IMAGE_BYTES) {
+    throw new Error('图片文件过大，请裁剪后重试');
+  }
+
+  // Also bound actual streamed bytes when Content-Length is absent/inaccurate.
+  const reader = response.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_IMAGE_BYTES) throw new Error('图片文件过大，请裁剪后重试');
+      chunks.push(value);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  if (job.controller.signal.aborted) throw new Error('识别超时，请重试');
+  const blob = new Blob(chunks, { type: response.headers.get('content-type') || '' });
+  return JQRBarcodeDecoder.decode(blob);
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request?.type !== 'jqrcode:download') return;
+  const job = jobs.get(sender.tab?.id);
+  if (!job || job.id !== request.requestId || job.documentId !== sender.documentId) {
+    sendResponse({ success: false, error: '识别请求已结束，请重试' });
+    return;
+  }
+  // Only download the image captured by the user's menu click, never an
+  // arbitrary URL supplied by a message from the content script.
+  downloadAndDecode(job).then(
+    result => sendResponse({ success: true, result }),
+    error => sendResponse({
+      success: false,
+      error: job.controller.signal.aborted
+        ? '识别超时，请重试'
+        : `无法读取图片：${error.message}。跨域图片请允许图片域名的访问权限。`
+    })
+  );
   return true;
 });
 
-/**
- * 处理二维码识别请求
- */
-function handleQRCodeRecognition(url) {
-  try {
-    if (!url) {
-      console.warn('二维码识别：URL 为空');
-      return;
-    }
-
-    // 判断是否为本地文件
-    if (url.indexOf('file') === 0) {
-      downloadAndPush(url);
-    } else {
-      sendMessageToContentJS(url);
-    }
-  } catch (error) {
-    console.error('二维码识别处理失败:', error);
+chrome.tabs.onRemoved.addListener(tabId => {
+  const job = jobs.get(tabId);
+  if (job) {
+    clearTimeout(job.timer);
+    job.controller.abort();
+    jobs.delete(tabId);
   }
-}
-
-/**
- * 下载图片并转为 Base64，然后通知 content.js
- * 处理跨域或本地图片
- */
-function downloadAndPush(url) {
-  try {
-    fetch(url)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`图片下载失败: ${response.status}`);
-        }
-        return response.blob();
-      })
-      .then((blobData) => {
-        const reader = new FileReader();
-        reader.addEventListener(
-          'load',
-          function () {
-            sendMessageToContentJS(reader.result);
-          },
-          false
-        );
-        reader.addEventListener(
-          'error',
-          function () {
-            console.error('FileReader 读取失败:', reader.error);
-          },
-          false
-        );
-        reader.readAsDataURL(blobData);
-      })
-      .catch((error) => {
-        console.error('图片下载失败:', error);
-      });
-  } catch (error) {
-    console.error('下载并转换失败:', error);
-  }
-}
-
-/**
- * 向当前活跃标签页的 content.js 发送消息
- */
-function sendMessageToContentJS(data) {
-  try {
-    let queryOptions = { active: true, currentWindow: true };
-    chrome.tabs.query(queryOptions, (tabs) => {
-      if (chrome.runtime.lastError) {
-        console.error('查询标签页失败:', chrome.runtime.lastError.message);
-        return;
-      }
-
-      if (tabs && tabs.length > 0) {
-        const activeTab = tabs[0];
-        chrome.tabs.sendMessage(activeTab.id, data, (response) => {
-          if (chrome.runtime.lastError) {
-            console.warn('发送消息失败:', chrome.runtime.lastError.message);
-          } else {
-            console.log('消息发送成功');
-          }
-        });
-      } else {
-        console.warn('未找到活跃标签页');
-      }
-    });
-  } catch (error) {
-    console.error('发送消息失败:', error);
-  }
-}
-
-
+});

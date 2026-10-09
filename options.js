@@ -3,44 +3,30 @@
  * 处理用户配置的保存和读取
  */
 
-// 默认配置
-const DEFAULT_CONFIG = {
-  localhost: {
-    from: 'http://localhost',
-    to: 'http://10.55.2.25'
-  },
-  qrCode: {
-    minWidth: 220,
-    maxWidth: 320,
-    urlLengthThreshold: 40
-  },
-  features: {
-    contextMenuEnabled: true
-  }
-};
+// 与弹窗、后台共享同一份默认配置。
+const DEFAULT_CONFIG = JQRConfig.defaults;
 
 // 页面加载时读取配置
 document.addEventListener('DOMContentLoaded', () => {
-  loadSettings();
+  loadSettings().catch(error => showStatus('读取设置失败: ' + error.message, 'error'));
   bindEvents();
 });
 
 /**
  * 加载已保存的配置
  */
-function loadSettings() {
-  chrome.storage.sync.get(['localhostConfig', 'qrCodeConfig', 'featuresConfig'], (result) => {
-    const localhostConfig = result.localhostConfig || DEFAULT_CONFIG.localhost;
-    const qrCodeConfig = result.qrCodeConfig || DEFAULT_CONFIG.qrCode;
-    const featuresConfig = result.featuresConfig || DEFAULT_CONFIG.features;
+async function loadSettings() {
+  const config = await JQRConfig.load();
+  const localhostConfig = config.localhost;
+  const qrCodeConfig = config.qrCode;
+  const featuresConfig = config.features;
 
-    document.getElementById('localhost-from').value = localhostConfig.from;
-    document.getElementById('localhost-to').value = localhostConfig.to;
-    document.getElementById('qr-min-width').value = qrCodeConfig.minWidth;
-    document.getElementById('qr-max-width').value = qrCodeConfig.maxWidth;
-    document.getElementById('qr-threshold').value = qrCodeConfig.urlLengthThreshold;
-    document.getElementById('context-menu-toggle').checked = featuresConfig.contextMenuEnabled;
-  });
+  document.getElementById('localhost-from').value = localhostConfig.from;
+  document.getElementById('localhost-to').value = localhostConfig.to;
+  document.getElementById('qr-min-width').value = qrCodeConfig.minWidth;
+  document.getElementById('qr-max-width').value = qrCodeConfig.maxWidth;
+  document.getElementById('qr-threshold').value = qrCodeConfig.urlLengthThreshold;
+  document.getElementById('context-menu-toggle').checked = featuresConfig.contextMenuEnabled;
 }
 
 /**
@@ -67,9 +53,9 @@ function saveSettings() {
     // 验证输入
     const localhostFrom = document.getElementById('localhost-from').value.trim();
     const localhostTo = document.getElementById('localhost-to').value.trim();
-    const minWidth = parseInt(document.getElementById('qr-min-width').value);
-    const maxWidth = parseInt(document.getElementById('qr-max-width').value);
-    const threshold = parseInt(document.getElementById('qr-threshold').value);
+    const minWidth = Number(document.getElementById('qr-min-width').value);
+    const maxWidth = Number(document.getElementById('qr-max-width').value);
+    const threshold = Number(document.getElementById('qr-threshold').value);
     const contextMenuEnabled = document.getElementById('context-menu-toggle').checked;
 
     // 基本验证
@@ -78,8 +64,8 @@ function saveSettings() {
       return;
     }
 
-    if (isNaN(minWidth) || isNaN(maxWidth) || isNaN(threshold)) {
-      showStatus('二维码配置必须为数字', 'error');
+    if (![minWidth, maxWidth, threshold].every(Number.isInteger)) {
+      showStatus('二维码配置必须为整数', 'error');
       return;
     }
 
@@ -90,6 +76,11 @@ function saveSettings() {
 
     if (minWidth > maxWidth) {
       showStatus('最小宽度不能大于最大宽度', 'error');
+      return;
+    }
+
+    if (minWidth < 100 || maxWidth > 600) {
+      showStatus('二维码宽度须在 100～600 px 之间', 'error');
       return;
     }
 
@@ -118,15 +109,8 @@ function saveSettings() {
         showStatus('保存失败: ' + chrome.runtime.lastError.message, 'error');
         return;
       }
-      showStatus('✓ 设置已保存，重新加载页面后生效', 'success');
-      
-      // 通知 background.js 更新右键菜单
-      chrome.runtime.sendMessage({ 
-        action: 'updateContextMenu',
-        enabled: contextMenuEnabled
-      }).catch(err => {
-        console.warn('通知 background.js 失败:', err);
-      });
+      showStatus('✓ 设置已保存，下次打开弹窗时生效', 'success');
+      // 后台直接监听 storage.onChanged 更新右键菜单。
     });
   } catch (error) {
     console.error('保存配置异常:', error);
@@ -147,6 +131,7 @@ function resetToDefault() {
   document.getElementById('qr-min-width').value = DEFAULT_CONFIG.qrCode.minWidth;
   document.getElementById('qr-max-width').value = DEFAULT_CONFIG.qrCode.maxWidth;
   document.getElementById('qr-threshold').value = DEFAULT_CONFIG.qrCode.urlLengthThreshold;
+  document.getElementById('context-menu-toggle').checked = DEFAULT_CONFIG.features.contextMenuEnabled;
 
   saveSettings();
 }

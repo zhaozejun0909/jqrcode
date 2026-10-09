@@ -238,14 +238,14 @@
             </div>
 
             <div class="setting-item">
-                <label for="qr-threshold">URL 长度阈值 (字符数)</label>
+                <label for="qr-threshold">内容长度阈值 (字节)</label>
                 <input 
                     type="text" 
                     id="qr-threshold" 
                     placeholder="例如: 40"
                     value="40"
                 >
-                <div class="help-text">超过这个字符数时，二维码宽度会自动增大</div>
+                <div class="help-text">二维码版本超过这个长度对应的版本时，宽度会逐级增大；中文按编码后的字节数计算</div>
             </div>
         </div>
 
@@ -270,6 +270,7 @@
         <div class="status-message" id="status-message"></div>
     </div>
 
+    <script src="config.js"></script>
     <script src="options.js"></script>
 </body>
 </html>

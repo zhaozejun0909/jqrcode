@@ -1,41 +1,34 @@
-/**
- * 实用工具函数
- */
+/** Utilities used in the extension's isolated world. */
+(() => {
+  if (globalThis.JQRUtils) return;
 
-// 复制文本到剪贴板
-function copyText(text) {
-  try {
-    // 创建临时文本区域
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // Fall back for pages without clipboard access.
+    }
+    const focused = document.activeElement;
     const textarea = document.createElement('textarea');
     textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
+    textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
     document.body.appendChild(textarea);
-    
-    // 选中并复制
-    textarea.select();
-    textarea.setSelectionRange(0, 99999);
-    const successful = document.execCommand('copy');
-    
-    // 清理
-    document.body.removeChild(textarea);
-    
-    return successful;
-  } catch (error) {
-    console.error('复制失败:', error);
-    return false;
+    try {
+      textarea.select();
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      textarea.remove();
+      focused?.focus({ preventScroll: true });
+    }
   }
-}
 
-// 检查是否为 URL
-function isUrl(text) {
-  return /^https?:\/\/.+/.test(text);
-}
-
-// 导出所有函数
-window.QRUtils = {
-  copyText,
-  isUrl,
-  getConfig
-};
-
+  globalThis.JQRUtils = {
+    copyText,
+    isUrl: text => /^https?:\/\/.+/i.test(text)
+  };
+})();
